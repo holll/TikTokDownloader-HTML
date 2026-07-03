@@ -150,8 +150,24 @@ var waterfall = {
   limit: 20,
   hasMore: true,
   loading: false,
-  total: 0
+  total: 0,
+  orderAsc: false
 };
+
+var orderParam = function() {
+  return waterfall.orderAsc ? '&order=asc' : '';
+};
+
+function toggleOrder() {
+  waterfall.orderAsc = !waterfall.orderAsc;
+  var btn = document.getElementById('order-trigger');
+  if (btn) {
+    btn.textContent = waterfall.orderAsc ? '\u23EB' : '\u23EC';
+    btn.title = waterfall.orderAsc ? '最新在前' : '最早在前';
+  }
+  // Reload from scratch
+  loadUserPosts();
+}
 
 async function loadUserPosts() {
   // Parse UID from URL: /user/{uid}
@@ -166,7 +182,7 @@ async function loadUserPosts() {
   waterfall.offset = 0;
 
   try {
-    var data = await fetchJSON('/api/users/' + uid + '?offset=0&limit=' + waterfall.limit);
+    var data = await fetchJSON('/api/users/' + uid + '?offset=0&limit=' + waterfall.limit + orderParam());
     waterfall.hasMore = data.has_more;
     waterfall.total = data.total;
 
@@ -194,6 +210,7 @@ async function loadUserPosts() {
     // 异步加载日期索引，不阻塞瀑布流
     loadDateIndex(uid);
   } catch (err) {
+
     document.getElementById('posts-container').innerHTML =
       '<div class="empty-state"><h2>加载失败</h2><p>' + err.message + '</p></div>';
   }
@@ -207,7 +224,7 @@ function setupWaterfall() {
     if (!entries[0].isIntersecting || !waterfall.hasMore || waterfall.loading) return;
 
     waterfall.loading = true;
-    fetchJSON('/api/users/' + waterfall.uid + '?offset=' + waterfall.offset + '&limit=' + waterfall.limit)
+    fetchJSON('/api/users/' + waterfall.uid + '?offset=' + waterfall.offset + '&limit=' + waterfall.limit + orderParam())
       .then(function (data) {
         waterfall.hasMore = data.has_more;
 
@@ -241,7 +258,7 @@ var datePanelOpen = false;
 
 async function loadDateIndex(uid) {
   try {
-    var items = await fetchJSON('/api/users/' + uid + '/date-index');
+    var items = await fetchJSON('/api/users/' + uid + '/date-index' + (waterfall.orderAsc ? '?order=asc' : ''));
     if (!items || !items.length) return;
     dateIndexItems = items;
 
@@ -346,7 +363,7 @@ function resetAndLoad(offset) {
     container.parentNode.insertBefore(sentinel, container.nextSibling);
   }
 
-  fetchJSON('/api/users/' + waterfall.uid + '?offset=' + offset + '&limit=' + waterfall.limit)
+  fetchJSON('/api/users/' + waterfall.uid + '?offset=' + offset + '&limit=' + waterfall.limit + orderParam())
     .then(function (data) {
       waterfall.hasMore = data.has_more;
       container.innerHTML = data.posts.map(renderPostCard).join('');

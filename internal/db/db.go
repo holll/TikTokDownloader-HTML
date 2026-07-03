@@ -136,7 +136,8 @@ func ListUsers() ([]models.UserSummary, error) {
 }
 
 // GetUserPosts returns a paginated slice of posts for the given uid.
-func GetUserPosts(uid string, offset, limit int) (nickname string, posts []models.Post, total int, err error) {
+// orderAsc=false (default): newest first; orderAsc=true: oldest first.
+func GetUserPosts(uid string, offset, limit int, orderAsc bool) (nickname string, posts []models.Post, total int, err error) {
 	// Total count
 	if err = DB.QueryRow("SELECT COUNT(*) FROM posts WHERE uid = ?", uid).Scan(&total); err != nil {
 		return
@@ -148,13 +149,18 @@ func GetUserPosts(uid string, offset, limit int) (nickname string, posts []model
 		nickname = uid
 	}
 
+	orderDir := "DESC"
+	if orderAsc {
+		orderDir = "ASC"
+	}
+
 	// Post rows
 	rows, err := DB.Query(`
 		SELECT id, aweme_id, create_time, create_time_display,
 		       desc, media_type, media_type_cn
 		FROM posts
 		WHERE uid = ?
-		ORDER BY create_time DESC
+		ORDER BY create_time `+orderDir+`
 		LIMIT ? OFFSET ?
 	`, uid, limit, offset)
 	if err != nil {
@@ -416,14 +422,19 @@ func LogSync(tx *sql.Tx, usersCount, postsCount int) error {
 }
 
 // GetDateIndex returns per-date post counts and cumulative offsets for a user.
-// Used by the date-navigation feature on the user page.
-func GetDateIndex(uid string) ([]models.DateIndexItem, error) {
+// orderAsc=false (default): newest-first offset; orderAsc=true: oldest-first offset.
+func GetDateIndex(uid string, orderAsc bool) ([]models.DateIndexItem, error) {
+	orderDir := "DESC"
+	if orderAsc {
+		orderDir = "ASC"
+	}
+
 	query := `
 	SELECT
 	  d.date,
 	  d.cnt,
 	  COALESCE(SUM(d.cnt) OVER (
-	    ORDER BY d.date DESC
+	    ORDER BY d.date ` + orderDir + `
 	    ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
 	  ), 0) AS offset
 	FROM (
@@ -431,8 +442,7 @@ func GetDateIndex(uid string) ([]models.DateIndexItem, error) {
 	  FROM posts WHERE uid = ?
 	  GROUP BY date
 	) d
-	ORDER BY d.date DESC
-	`
+	ORDER BY d.date ` + orderDir
 	rows, err := DB.Query(query, uid)
 	if err != nil {
 		return nil, err

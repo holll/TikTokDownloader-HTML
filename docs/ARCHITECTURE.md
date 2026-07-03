@@ -91,7 +91,7 @@ TikTokDownloader/
 │   ├── index.html                # 总索引页（用户卡片网格）
 │   ├── user.html                 # 用户作品页（瀑布流）
 │   ├── random.html               # 随机推荐页（瀑布流 + 用户徽标）
-│   ├── timeline.html             # 最新动态页（全部用户视频聚合）
+│   ├── timeline.html             # 最新动态页（全部用户作品聚合）
 │   │
 │   ├── css/
 │   │   ├── style.css             # 主样式（500+ 行）
@@ -109,6 +109,11 @@ TikTokDownloader/
 │       │   loadTimelinePosts     — 时间线加载
 │       │   setupWaterfall        — 用户页瀑布流观察者
 │       │   setupFeedWaterfall    — Feed 瀑布流观察者
+│       │
+│       │       toggleOrder            — 切换正序/倒序
+│       │       loadDateIndex          — 加载日期索引
+│       │       toggleDatePanel        — 展开/收起日期面板
+│       │       resetAndLoad           — 跳转 + 重建瀑布流
 │       │
 │       ├── lazy-loader.js        # 懒加载引擎
 │       │   initLazyLoad(root)    — IntersectionObserver 监控 data-src

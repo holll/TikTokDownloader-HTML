@@ -35,6 +35,7 @@ func GetUserPosts(c *gin.Context) {
 	uid := c.Param("uid")
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
+	orderAsc := c.DefaultQuery("order", "desc") == "asc"
 	if limit < 1 {
 		limit = 20
 	}
@@ -42,7 +43,7 @@ func GetUserPosts(c *gin.Context) {
 		limit = 100
 	}
 
-	nickname, posts, total, err := db.GetUserPosts(uid, offset, limit)
+	nickname, posts, total, err := db.GetUserPosts(uid, offset, limit, orderAsc)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -93,8 +94,9 @@ func GetRandomPosts(c *gin.Context) {
 // GetDateIndex returns per-date post counts and cumulative offsets for a user.
 func GetDateIndex(c *gin.Context) {
 	uid := c.Param("uid")
+	orderAsc := c.DefaultQuery("order", "desc") == "asc"
 
-	items, err := db.GetDateIndex(uid)
+	items, err := db.GetDateIndex(uid, orderAsc)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

@@ -465,6 +465,39 @@ a:hover {
   pointer-events: auto;
 }
 
+/* Sort-order button */
+.order-trigger {
+  position: fixed;
+  bottom: 80px;
+  right: 24px;
+  z-index: 210;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #fff;
+  color: #666;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: 1.5px solid #ddd;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s, color 0.15s, border-color 0.15s;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.order-trigger:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+  border-color: #fe2c55;
+  color: #fe2c55;
+}
+.order-trigger:active {
+  transform: scale(0.95);
+}
+
 /* Trigger button */
 .date-trigger {
   position: fixed;
@@ -573,6 +606,13 @@ a:hover {
 
 /* Narrow screen tweaks */
 @media (max-width: 480px) {
+  .order-trigger {
+    bottom: 68px;
+    right: 16px;
+    width: 42px;
+    height: 42px;
+    font-size: 16px;
+  }
   .date-trigger {
     bottom: 16px;
     right: 16px;
