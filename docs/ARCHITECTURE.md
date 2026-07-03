@@ -43,7 +43,7 @@ TikTokDownloader/
 │   │       UserSummary           — 用户摘要（索引页）
 │   │       UserDetail            — 用户详情（作品页 API 响应）
 │   │       FeedResponse          — Feed 流（随机/时间线）响应
-│   │       DateIndexItem         — 日期索引条目（待开发）
+│   │       DateIndexItem         — 日期索引条目
 │   │
 │   ├── parser/
 │   │   └── parser.go             # 文件名解析引擎
@@ -61,8 +61,9 @@ TikTokDownloader/
 │   │       Init()                — 初始化 + 建表迁移
 │   │       ListUsers()           — 查询所有用户摘要
 │   │       GetUserPosts()        — 按 UID 分页查询作品
-│   │       GetTimelinePosts()    — 所有用户视频按时间聚合
+│   │       GetTimelinePosts()    — 所有用户作品按时间聚合
 │   │       GetRandomPosts()      — 随机抽取作品
+│   │       GetDateIndex()         — 按日期统计（日期导航）
 │   │       fillMedia()           — 批量回填 media 字段
 │   │       fetchPostsCore()      — 通用 post 行扫描
 │   │       metasToPosts()        — postMeta → Post 转换
@@ -80,6 +81,7 @@ TikTokDownloader/
 │       │   ListUsers()           — GET /api/users
 │       │   GetUserPosts()        — GET /api/users/:uid
 │       │   GetRandomPosts()      — GET /api/random
+│       │   GetDateIndex()         — GET /api/users/:uid/date-index
 │       │   GetTimelinePosts()    — GET /api/timeline
 │       │
 │       └── static.go             # 静态文件 & 媒体文件服务
@@ -284,13 +286,7 @@ loadElement()
 | 媒体访问范围 | 仅限 VolumeDir 下匹配的用户目录 |
 | 前端渲染 | 所有用户内容（描述、昵称）均通过 `&gt;/&lt;` 转义 |
 
-## 七、待开发功能（已出方案）
-
-| 功能 | 文档 | 状态 |
-|------|------|------|
-| 按日期定位（快速滑动 + 选择） | `docs/date-navigation-plan.md` | 方案已出，待实施 |
-
-## 八、命名约定
+## 七、命名约定
 
 - 用户目录：`UID{id}_{nickname}_发布作品`
 - Post AwemeID：`{nickname}_{5位序号}`（如 `张三丰_00001`）

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"TikTokDownloader/internal/models"
+	"TikTokDownloader-HTML/internal/models"
 )
 
 // ── Constants (mirrors Python's MEDIA_EXTENSIONS / TYPE_MAP) ──

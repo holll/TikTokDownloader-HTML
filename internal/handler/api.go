@@ -6,8 +6,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"TikTokDownloader/internal/db"
-	"TikTokDownloader/internal/models"
+	"TikTokDownloader-HTML/internal/db"
+	"TikTokDownloader-HTML/internal/models"
 )
 
 // VolumeDir is the root directory containing user media folders.
@@ -86,6 +86,23 @@ func GetRandomPosts(c *gin.Context) {
 		HasMore: len(posts) == limit, // always more until empty
 		Total:   total,
 	})
+}
+
+// ── GET /api/users/:uid/date-index ────────────────────────────
+
+// GetDateIndex returns per-date post counts and cumulative offsets for a user.
+func GetDateIndex(c *gin.Context) {
+	uid := c.Param("uid")
+
+	items, err := db.GetDateIndex(uid)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if items == nil {
+		items = []models.DateIndexItem{}
+	}
+	c.JSON(http.StatusOK, items)
 }
 
 // ── GET /api/timeline ────────────────────────────────────────

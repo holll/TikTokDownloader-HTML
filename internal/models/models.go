@@ -63,3 +63,11 @@ type FeedResponse struct {
 	HasMore bool   `json:"has_more"`
 	Total   int    `json:"total"`
 }
+
+// DateIndexItem — returned by GET /api/users/:uid/date-index
+type DateIndexItem struct {
+	Date   string `json:"date"`   // "2024-01-15"
+	Label  string `json:"label"`  // "2024-01-15"
+	Count  int    `json:"count"`  // 该日期作品数
+	Offset int    `json:"offset"` // 该日期第一条作品在总列表中的位置
+}

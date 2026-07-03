@@ -190,6 +190,9 @@ async function loadUserPosts() {
     initLazyLoad();
 
     setupWaterfall();
+
+    // 异步加载日期索引，不阻塞瀑布流
+    loadDateIndex(uid);
   } catch (err) {
     document.getElementById('posts-container').innerHTML =
       '<div class="empty-state"><h2>加载失败</h2><p>' + err.message + '</p></div>';
@@ -229,6 +232,131 @@ function setupWaterfall() {
   });
 
   observer.observe(sentinel);
+}
+
+// ── Date index & navigation ─────────────────────────────────────
+
+var dateIndexItems = [];
+var datePanelOpen = false;
+
+async function loadDateIndex(uid) {
+  try {
+    var items = await fetchJSON('/api/users/' + uid + '/date-index');
+    if (!items || !items.length) return;
+    dateIndexItems = items;
+
+    // Show trigger button
+    var trigger = document.getElementById('date-trigger');
+    if (trigger) trigger.style.display = '';
+
+    // Populate the panel
+    renderDatePanel(groupByMonth(items));
+  } catch (err) {
+    console.warn('Date index load failed:', err);
+  }
+}
+
+function groupByMonth(items) {
+  var groups = {};
+  items.forEach(function (item) {
+    var month = item.date.substring(0, 7);
+    if (!groups[month]) groups[month] = [];
+    groups[month].push(item);
+  });
+  var keys = Object.keys(groups).sort().reverse();
+  return keys.map(function (k) {
+    return { month: k, items: groups[k] };
+  });
+}
+
+function renderDatePanel(monthGroups) {
+  var panel = document.getElementById('date-panel');
+  if (!panel) return;
+  if (!monthGroups.length) return;
+
+  var html = '';
+  monthGroups.forEach(function (g) {
+    var firstDate = g.items[0];
+    var display = g.month.replace('-', '/');
+    var total = g.items.reduce(function (s, it) { return s + it.count; }, 0);
+    html += '<div class="dp-month" data-offset="' + firstDate.offset +
+      '" title="' + display + ' · ' + total + '条">' +
+      display + '<span class="dp-count">' + total + '</span></div>';
+  });
+  panel.innerHTML = html;
+
+  // Click handler
+  panel.querySelectorAll('.dp-month').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var offset = parseInt(this.getAttribute('data-offset'), 10) || 0;
+      resetAndLoad(offset);
+      closePanel();
+    });
+  });
+}
+
+function toggleDatePanel() {
+  var panel = document.getElementById('date-panel');
+  var backdrop = document.getElementById('date-backdrop');
+  var trigger = document.getElementById('date-trigger');
+  if (!panel) return;
+
+  datePanelOpen = !datePanelOpen;
+  if (datePanelOpen) {
+    panel.classList.add('active');
+    backdrop.classList.add('active');
+    trigger.classList.add('active');
+  } else {
+    panel.classList.remove('active');
+    backdrop.classList.remove('active');
+    trigger.classList.remove('active');
+  }
+}
+
+function closePanel() {
+  if (!datePanelOpen) return;
+  datePanelOpen = false;
+  var panel = document.getElementById('date-panel');
+  var backdrop = document.getElementById('date-backdrop');
+  var trigger = document.getElementById('date-trigger');
+  if (panel) panel.classList.remove('active');
+  if (backdrop) backdrop.classList.remove('active');
+  if (trigger) trigger.classList.remove('active');
+}
+
+function resetAndLoad(offset) {
+  var oldSentinel = document.getElementById('sentinel');
+  if (oldSentinel && oldSentinel._observer) {
+    oldSentinel._observer.disconnect();
+    oldSentinel._observer = null;
+  }
+
+  waterfall.offset = offset;
+  waterfall.hasMore = true;
+  waterfall.loading = false;
+
+  var container = document.getElementById('posts-container');
+  container.innerHTML = '';
+
+  var sentinel = document.getElementById('sentinel');
+  if (!sentinel) {
+    sentinel = document.createElement('div');
+    sentinel.id = 'sentinel';
+    sentinel.style.height = '1px';
+    container.parentNode.insertBefore(sentinel, container.nextSibling);
+  }
+
+  fetchJSON('/api/users/' + waterfall.uid + '?offset=' + offset + '&limit=' + waterfall.limit)
+    .then(function (data) {
+      waterfall.hasMore = data.has_more;
+      container.innerHTML = data.posts.map(renderPostCard).join('');
+      waterfall.offset = offset + data.posts.length;
+      initLazyLoad();
+      setupWaterfall();
+    })
+    .catch(function (err) {
+      container.innerHTML = '<div class="empty-state"><h2>加载失败</h2><p>' + err.message + '</p></div>';
+    });
 }
 
 // ═══════════════════════════════════════════════════════════════

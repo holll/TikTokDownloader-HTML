@@ -9,7 +9,7 @@ import (
 
 	_ "modernc.org/sqlite"
 
-	"TikTokDownloader/internal/models"
+	"TikTokDownloader-HTML/internal/models"
 )
 
 var DB *sql.DB
@@ -69,9 +69,10 @@ func migrate() error {
 		FOREIGN KEY (post_id) REFERENCES posts(id)
 	);
 
-	CREATE INDEX IF NOT EXISTS idx_posts_uid         ON posts(uid);
-	CREATE INDEX IF NOT EXISTS idx_posts_time        ON posts(uid, create_time DESC);
-	CREATE INDEX IF NOT EXISTS idx_media_post_id     ON media(post_id);
+	CREATE INDEX IF NOT EXISTS idx_posts_uid          ON posts(uid);
+	CREATE INDEX IF NOT EXISTS idx_posts_time         ON posts(uid, create_time DESC);
+	CREATE INDEX IF NOT EXISTS idx_posts_create_time  ON posts(create_time DESC);
+	CREATE INDEX IF NOT EXISTS idx_media_post_id      ON media(post_id);
 
 	CREATE TABLE IF NOT EXISTS sync_log (
 		id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -87,20 +88,29 @@ func migrate() error {
 // ── Query helpers ─────────────────────────────────────────────
 
 // ListUsers returns all users with post counts and first thumbnails.
+// Uses a single joined subquery with ROW_NUMBER() to avoid N+1 per-user lookups.
 func ListUsers() ([]models.UserSummary, error) {
 	query := `
 	SELECT
 		u.uid,
 		u.nickname,
 		COUNT(p.id) AS post_count,
-		(SELECT m.filename
-		   FROM posts p2
-		   JOIN media m ON m.post_id = p2.id
-		  WHERE p2.uid = u.uid AND m.type = 'image'
-		  ORDER BY p2.create_time DESC
-		  LIMIT 1) AS first_thumb
+		t.first_thumb
 	FROM users u
 	LEFT JOIN posts p ON p.uid = u.uid
+	LEFT JOIN (
+		SELECT uid, filename AS first_thumb
+		FROM (
+			SELECT p2.uid, m.filename,
+				ROW_NUMBER() OVER (
+					PARTITION BY p2.uid ORDER BY p2.create_time DESC
+				) AS rn
+			FROM posts p2
+			JOIN media m ON m.post_id = p2.id
+			WHERE m.type = 'image'
+		)
+		WHERE rn = 1
+	) t ON t.uid = u.uid
 	GROUP BY u.uid
 	ORDER BY u.nickname
 	`
@@ -312,16 +322,15 @@ func metasToPosts(metas []postMeta) []models.Post {
 	return posts
 }
 
-// GetTimelinePosts returns video/mixed posts from all users, ordered by create_time DESC.
+// GetTimelinePosts returns all posts from all users, ordered by create_time DESC.
 func GetTimelinePosts(offset, limit int) ([]models.Post, int, error) {
 	var total int
-	if err := DB.QueryRow("SELECT COUNT(*) FROM posts WHERE media_type IN ('video','mixed')").Scan(&total); err != nil {
+	if err := DB.QueryRow("SELECT COUNT(*) FROM posts").Scan(&total); err != nil {
 		return nil, 0, err
 	}
 
 	query := `FROM posts p
 		JOIN users u ON u.uid = p.uid
-		WHERE p.media_type IN ('video','mixed')
 		ORDER BY p.create_time DESC
 		LIMIT ? OFFSET ?`
 
@@ -404,6 +413,42 @@ func LogSync(tx *sql.Tx, usersCount, postsCount int) error {
 		VALUES (datetime('now'), ?, ?)
 	`, usersCount, postsCount)
 	return err
+}
+
+// GetDateIndex returns per-date post counts and cumulative offsets for a user.
+// Used by the date-navigation feature on the user page.
+func GetDateIndex(uid string) ([]models.DateIndexItem, error) {
+	query := `
+	SELECT
+	  d.date,
+	  d.cnt,
+	  COALESCE(SUM(d.cnt) OVER (
+	    ORDER BY d.date DESC
+	    ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+	  ), 0) AS offset
+	FROM (
+	  SELECT substr(create_time, 1, 10) AS date, COUNT(*) AS cnt
+	  FROM posts WHERE uid = ?
+	  GROUP BY date
+	) d
+	ORDER BY d.date DESC
+	`
+	rows, err := DB.Query(query, uid)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []models.DateIndexItem
+	for rows.Next() {
+		var item models.DateIndexItem
+		if err := rows.Scan(&item.Date, &item.Count, &item.Offset); err != nil {
+			return nil, err
+		}
+		item.Label = item.Date
+		items = append(items, item)
+	}
+	return items, rows.Err()
 }
 
 // IsEmpty returns true if the users table has no rows.

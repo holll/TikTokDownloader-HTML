@@ -4,9 +4,9 @@ import (
 	"database/sql"
 	"log"
 
-	"TikTokDownloader/internal/db"
-	"TikTokDownloader/internal/parser"
-	"TikTokDownloader/internal/scanner"
+	"TikTokDownloader-HTML/internal/db"
+	"TikTokDownloader-HTML/internal/parser"
+	"TikTokDownloader-HTML/internal/scanner"
 )
 
 // FullScan scans the Volume directory, parses all media files,

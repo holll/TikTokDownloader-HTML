@@ -12,9 +12,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"TikTokDownloader/internal/db"
-	"TikTokDownloader/internal/handler"
-	"TikTokDownloader/internal/sync"
+	"TikTokDownloader-HTML/internal/db"
+	"TikTokDownloader-HTML/internal/handler"
+	"TikTokDownloader-HTML/internal/sync"
 )
 
 //go:embed web
@@ -74,6 +74,7 @@ func main() {
 
 	// API (reads from SQLite)
 	r.GET("/api/users", handler.ListUsers)
+	r.GET("/api/users/:uid/date-index", handler.GetDateIndex)
 	r.GET("/api/users/:uid", handler.GetUserPosts)
 	r.GET("/api/random", handler.GetRandomPosts)
 	r.GET("/api/timeline", handler.GetTimelinePosts)
