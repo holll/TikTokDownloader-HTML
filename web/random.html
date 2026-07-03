@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>随机推荐 · 抖音作品存档</title>
+<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/css/nav.css">
+</head>
+<body>
+<div class="nav-bar">
+  <a href="/" class="nav-item">📁 总索引</a>
+  <a href="/random" class="nav-item active">🎲 随机推荐</a>
+  <a href="/timeline" class="nav-item">📺 最新动态</a>
+</div>
+<div class="header">
+  <h1>随机推荐</h1>
+  <div class="stats" id="feed-stats">加载中...</div>
+</div>
+<div class="container" id="posts-container"></div>
+<div id="sentinel" style="height:1px"></div>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox">
+  <button class="lightbox-close" onclick="closeLightbox()">&times;</button>
+  <button class="lightbox-nav lightbox-prev" id="lb-prev" onclick="lbNavigate(-1)">&#8249;</button>
+  <div class="lightbox-inner" id="lightbox-inner">
+    <div id="lightbox-content"></div>
+  </div>
+  <button class="lightbox-nav lightbox-next" id="lb-next" onclick="lbNavigate(1)">&#8250;</button>
+  <div class="lightbox-counter" id="lb-counter"></div>
+  <div class="lightbox-zoom-hint">滚轮缩放 · 拖拽移动 · ← → 切换 · ESC关闭</div>
+</div>
+
+<script src="/js/lazy-loader.js"></script>
+<script src="/js/lightbox.js"></script>
+<script src="/js/app.js"></script>
+<script>document.addEventListener('DOMContentLoaded', loadRandomPosts);</script>
+</body>
+</html>
