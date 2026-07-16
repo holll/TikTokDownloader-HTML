@@ -22,7 +22,8 @@ func Init(dbPath string) error {
 		return fmt.Errorf("open db: %w", err)
 	}
 
-	DB.SetMaxOpenConns(1) // SQLite serialises writes
+	DB.SetMaxOpenConns(10) // WAL mode supports concurrent reads
+	DB.SetMaxIdleConns(5)
 
 	if err := migrate(); err != nil {
 		return fmt.Errorf("migrate: %w", err)
@@ -281,6 +282,7 @@ func fetchPostsCore(query string, args ...interface{}) ([]postMeta, error) {
 }
 
 // metasToPosts converts postMeta slice to Post slice, grouping by uid for media fetch.
+// Preserves the original order of metas in the output.
 func metasToPosts(metas []postMeta) []models.Post {
 	if len(metas) == 0 {
 		return nil
@@ -309,21 +311,22 @@ func metasToPosts(metas []postMeta) []models.Post {
 		uidPostMap[pm.UID][pm.PostID] = p
 	}
 
-	// Fetch media per uid and build result preserving original order
-	var posts []models.Post
-	built := make(map[int64]bool)
+	// Fetch media per uid (populates posts in uidPostMap)
+	fetched := make(map[string]bool)
 	for _, pm := range metas {
-		if built[pm.PostID] {
+		if fetched[pm.UID] {
 			continue
 		}
-		// Collect all post IDs for this uid and fetch media once
-		postsForUID := fillMedia(pm.UID, uidPostIDs[pm.UID], uidPostMap[pm.UID])
-		for _, p := range postsForUID {
-			posts = append(posts, p)
-		}
-		for _, pid := range uidPostIDs[pm.UID] {
-			built[pid] = true
-		}
+		fillMedia(pm.UID, uidPostIDs[pm.UID], uidPostMap[pm.UID])
+		fetched[pm.UID] = true
+	}
+
+	// Reassemble in original metas order
+	posts := make([]models.Post, 0, len(metas))
+	for _, pm := range metas {
+		p := uidPostMap[pm.UID][pm.PostID]
+		p.MediaCount = len(p.Media)
+		posts = append(posts, *p)
 	}
 	return posts
 }
@@ -466,6 +469,13 @@ func IsEmpty() (bool, error) {
 	var cnt int
 	err := DB.QueryRow("SELECT COUNT(*) FROM users").Scan(&cnt)
 	return cnt == 0, err
+}
+
+// GetUserDirPath returns the stored dir_path for a given uid.
+func GetUserDirPath(uid string) (string, error) {
+	var dirPath string
+	err := DB.QueryRow("SELECT dir_path FROM users WHERE uid = ?", uid).Scan(&dirPath)
+	return dirPath, err
 }
 
 // Log helpers (print-friendly)

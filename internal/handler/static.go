@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+
+	"TikTokDownloader-HTML/internal/db"
 )
 
 // ServeMedia streams a media file from a user's directory.
@@ -30,13 +32,18 @@ func ServeMedia(c *gin.Context) {
 		return
 	}
 
-	// Locate the user directory by UID
-	pattern := filepath.Join(VolumeDir, "UID"+uid+"_*_发布作品")
-	matches, err := filepath.Glob(pattern)
-	if err != nil || len(matches) == 0 {
-		c.AbortWithStatus(http.StatusNotFound)
-		return
+	// Look up dir_path from DB (fast), fallback to Glob if not found
+	dirPath, err := db.GetUserDirPath(uid)
+	if err != nil || dirPath == "" {
+		pattern := filepath.Join(VolumeDir, "UID"+uid+"_*_发布作品")
+		matches, globErr := filepath.Glob(pattern)
+		if globErr != nil || len(matches) == 0 {
+			c.AbortWithStatus(http.StatusNotFound)
+			return
+		}
+		dirPath = matches[0]
 	}
 
-	c.File(filepath.Join(matches[0], cleanFile))
+	c.Header("Cache-Control", "public, max-age=31536000, immutable")
+	c.File(filepath.Join(dirPath, cleanFile))
 }

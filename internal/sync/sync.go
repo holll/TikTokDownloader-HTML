@@ -1,7 +1,6 @@
 package sync
 
 import (
-	"database/sql"
 	"log"
 
 	"TikTokDownloader-HTML/internal/db"
@@ -72,20 +71,12 @@ func RunInitialSync(volumeDir string) {
 		log.Printf("[sync] 检查数据库失败: %v", err)
 		return
 	}
-	if !empty {
-		log.Println("[sync] 数据库已有数据，异步后台扫描")
-		FullScan(volumeDir)
-		return
+	if empty {
+		log.Println("[sync] 数据库为空，开始初始扫描...")
+	} else {
+		log.Println("[sync] 数据库已有数据，执行后台同步...")
 	}
-	log.Println("[sync] 数据库为空，开始初始扫描...")
 	if err := FullScan(volumeDir); err != nil {
-		log.Printf("[sync] 初始扫描失败: %v", err)
-	}
-}
-
-// Transaction helper (unused but kept for future use)
-func txRollback(tx *sql.Tx) {
-	if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
-		log.Printf("[sync] rollback 失败: %v", err)
+		log.Printf("[sync] 扫描失败: %v", err)
 	}
 }

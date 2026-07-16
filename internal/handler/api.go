@@ -25,6 +25,7 @@ func ListUsers(c *gin.Context) {
 	if summaries == nil {
 		summaries = []models.UserSummary{}
 	}
+	c.Header("Cache-Control", "public, max-age=300")
 	c.JSON(http.StatusOK, summaries)
 }
 
@@ -52,6 +53,7 @@ func GetUserPosts(c *gin.Context) {
 		posts = []models.Post{}
 	}
 
+	c.Header("Cache-Control", "public, max-age=300")
 	c.JSON(http.StatusOK, models.UserDetail{
 		UID:      uid,
 		Nickname: nickname,
@@ -82,6 +84,7 @@ func GetRandomPosts(c *gin.Context) {
 		posts = []models.Post{}
 	}
 
+	c.Header("Cache-Control", "no-store")
 	c.JSON(http.StatusOK, models.FeedResponse{
 		Posts:   posts,
 		HasMore: len(posts) == limit, // always more until empty
@@ -104,6 +107,7 @@ func GetDateIndex(c *gin.Context) {
 	if items == nil {
 		items = []models.DateIndexItem{}
 	}
+	c.Header("Cache-Control", "public, max-age=300")
 	c.JSON(http.StatusOK, items)
 }
 
@@ -129,6 +133,7 @@ func GetTimelinePosts(c *gin.Context) {
 		posts = []models.Post{}
 	}
 
+	c.Header("Cache-Control", "public, max-age=60")
 	c.JSON(http.StatusOK, models.FeedResponse{
 		Posts:   posts,
 		HasMore: offset+len(posts) < total,

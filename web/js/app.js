@@ -5,6 +5,12 @@ async function fetchJSON(url) {
   return res.json();
 }
 
+// ── HTML escape helper ────────────────────────────────────────
+function escapeHTML(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 // ── Hashtag highlighting ─────────────────────────────────────
 function highlightHashtags(text) {
   if (!text) return '<span style="color:#bbb">(no description)</span>';
@@ -54,8 +60,8 @@ function renderMediaGrid(media) {
 
 // ── Post card (user page) ─────────────────────────────────────
 function renderPostCard(post) {
-  var time = post.create_time_display || post.create_time || '';
-  var typeLabel = post.media_type_cn || '';
+  var time = escapeHTML(post.create_time_display || post.create_time || '');
+  var typeLabel = escapeHTML(post.media_type_cn || '');
   var descHTML = highlightHashtags(post.desc);
   var gridHTML = renderMediaGrid(post.media);
 
@@ -71,16 +77,16 @@ function renderPostCard(post) {
 
 // ── Post card (feed page) — with user badge ──────────────────
 function renderFeedPostCard(post) {
-  var time = post.create_time_display || post.create_time || '';
-  var typeLabel = post.media_type_cn || '';
-  var nickname = post.nickname || post.uid || '';
+  var time = escapeHTML(post.create_time_display || post.create_time || '');
+  var typeLabel = escapeHTML(post.media_type_cn || '');
+  var nickname = escapeHTML(post.nickname || post.uid || '');
   var uid = post.uid || '';
   var descHTML = highlightHashtags(post.desc);
   var gridHTML = renderMediaGrid(post.media);
 
   return '<div class="post-card">' +
     '<div class="post-header">' +
-      '<a class="post-user" href="/user/' + uid + '">@' + nickname + '</a>' +
+      '<a class="post-user" href="/user/' + encodeURIComponent(uid) + '">@' + nickname + '</a>' +
       '<div class="post-meta-row">' +
         '<span class="post-time">' + time + '</span>' +
         '<span class="post-type">' + typeLabel + '</span>' +
@@ -118,11 +124,14 @@ function renderUserCards(users) {
   grid.innerHTML = users.map(function (u) {
     var thumbHTML = u.first_thumb
       ? '<img data-src="' + u.first_thumb.replace(/&/g, '&amp;').replace(/"/g, '&quot;') + '" loading="lazy" alt="">'
-      : (u.nickname || '?')[0];
-    return '<a class="user-card" href="/user/' + u.uid + '">' +
+      : escapeHTML((u.nickname || '?')[0]);
+    return '<a class="user-card" href="/user/' + encodeURIComponent(u.uid) + '">' +
       '<div class="avatar">' + thumbHTML + '</div>' +
-      '<div class="nickname">' + u.nickname + '</div>' +
-      '<div class="meta">UID: ' + u.uid + ' · ' + u.post_count + ' 条作品</div>' +
+      '<div class="nickname">' + escapeHTML(u.nickname) + '</div>' +
+      '<div class="meta">' +
+        '<div class="meta-uid">UID: ' + escapeHTML(u.uid) + '</div>' +
+        '<div class="meta-count">' + u.post_count + ' 条作品</div>' +
+      '</div>' +
     '</a>';
   }).join('');
   // Store for search filtering
@@ -234,7 +243,7 @@ function setupWaterfall() {
         waterfall.offset += data.posts.length;
 
         // 对瀑布流新加载的内容启用懒加载
-        initLazyLoad(container);
+        observeLazy(container);
 
         if (!waterfall.hasMore) {
           sentinel.remove();
@@ -248,6 +257,7 @@ function setupWaterfall() {
       });
   });
 
+  sentinel._observer = observer;
   observer.observe(sentinel);
 }
 
@@ -460,7 +470,7 @@ function setupFeedWaterfall() {
           data.posts.map(renderFeedPostCard).join(''));
         feed.offset += data.posts.length;
 
-        initLazyLoad(container);
+        observeLazy(container);
 
         if (!feed.hasMore) {
           sentinel.remove();

@@ -80,12 +80,16 @@ func main() {
 	r.GET("/api/timeline", handler.GetTimelinePosts)
 
 	// Manual re-sync endpoint
+	// NOTE: after a successful sync, CDN caches for API routes (/api/users, /api/timeline, etc.)
+	// will remain stale until their max-age expires. To purge immediately, trigger a CDN cache
+	// invalidation from your CDN provider after calling this endpoint.
 	r.POST("/api/sync", func(c *gin.Context) {
 		log.Println("[api] 收到手动同步请求...")
 		if err := sync.FullScan(volumeDir); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
+		c.Header("Cache-Control", "no-store")
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
@@ -93,12 +97,15 @@ func main() {
 	r.GET("/media/:uid/:file", handler.ServeMedia)
 
 	// SPA pages - from embedded FS
+	// no-cache: CDN/browser must revalidate each time, but may serve from cache if 304.
+	// This ensures users always get the latest HTML shell without forcing a full re-download.
 	r.GET("/", func(c *gin.Context) {
 		data, err := fs.ReadFile(webFS, "web/index.html")
 		if err != nil {
 			c.Status(http.StatusNotFound)
 			return
 		}
+		c.Header("Cache-Control", "no-cache")
 		c.Data(http.StatusOK, "text/html; charset=utf-8", data)
 	})
 	r.GET("/user/:uid", func(c *gin.Context) {
@@ -107,6 +114,7 @@ func main() {
 			c.Status(http.StatusNotFound)
 			return
 		}
+		c.Header("Cache-Control", "no-cache")
 		c.Data(http.StatusOK, "text/html; charset=utf-8", data)
 	})
 	r.GET("/random", func(c *gin.Context) {
@@ -115,6 +123,7 @@ func main() {
 			c.Status(http.StatusNotFound)
 			return
 		}
+		c.Header("Cache-Control", "no-cache")
 		c.Data(http.StatusOK, "text/html; charset=utf-8", data)
 	})
 	r.GET("/timeline", func(c *gin.Context) {
@@ -123,10 +132,20 @@ func main() {
 			c.Status(http.StatusNotFound)
 			return
 		}
+		c.Header("Cache-Control", "no-cache")
 		c.Data(http.StatusOK, "text/html; charset=utf-8", data)
 	})
 
-	// Static assets - from embedded FS
+	// Static assets - from embedded FS (with cache headers)
+	r.GET("/favicon.png", func(c *gin.Context) {
+		data, err := fs.ReadFile(webFS, "web/favicon.png")
+		if err != nil {
+			c.Status(http.StatusNotFound)
+			return
+		}
+		c.Header("Cache-Control", "public, max-age=86400")
+		c.Data(http.StatusOK, "image/png", data)
+	})
 	r.GET("/css/*filepath", func(c *gin.Context) {
 		subPath := strings.TrimPrefix(c.Param("filepath"), "/")
 		data, err := fs.ReadFile(webFS, "web/css/"+subPath)
@@ -134,6 +153,7 @@ func main() {
 			c.Status(http.StatusNotFound)
 			return
 		}
+		c.Header("Cache-Control", "public, max-age=3600")
 		c.Data(http.StatusOK, "text/css; charset=utf-8", data)
 	})
 	r.GET("/js/*filepath", func(c *gin.Context) {
@@ -143,6 +163,7 @@ func main() {
 			c.Status(http.StatusNotFound)
 			return
 		}
+		c.Header("Cache-Control", "public, max-age=3600")
 		c.Data(http.StatusOK, "application/javascript; charset=utf-8", data)
 	})
 

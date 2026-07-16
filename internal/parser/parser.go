@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -112,7 +114,6 @@ func GroupPosts(files []*models.MediaFile) []models.Post {
 	}
 
 	posts := make([]models.Post, 0, len(groups))
-	idx := 0
 	for _, group := range groups {
 		// Sort files within post by part number
 		sort.Slice(group, func(i, j int) bool {
@@ -133,8 +134,11 @@ func GroupPosts(files []*models.MediaFile) []models.Post {
 		}
 
 		first := group[0]
+		// Generate deterministic AwemeID from content key
+		h := sha256.Sum256([]byte(first.DateTimeISO + "|" + first.TypeCN + "|" + first.Nickname + "|" + first.Desc))
+		awemeID := first.Nickname + "_" + hex.EncodeToString(h[:8])
 		posts = append(posts, models.Post{
-			AwemeID:           fmt.Sprintf("%s_%05d", first.Nickname, idx),
+			AwemeID:           awemeID,
 			CreateTime:        first.DateTimeISO,
 			CreateTimeDisplay: first.DateTimeStr,
 			Desc:              first.Desc,
@@ -143,7 +147,6 @@ func GroupPosts(files []*models.MediaFile) []models.Post {
 			Media:             media,
 			MediaCount:        len(media),
 		})
-		idx++
 	}
 
 	// Sort reverse-chronological
